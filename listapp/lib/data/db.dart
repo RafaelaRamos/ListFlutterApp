@@ -1,16 +1,11 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite/sqlite_api.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite/sqlite_api.dart';
-import 'dart:io' as io;
-
 import 'package:path/path.dart';
 
 class DBHelper {
   DBHelper._();
-  
+
   static final DBHelper instance = DBHelper._();
-  
+
   static Database? _db;
 
   get database async {
@@ -21,7 +16,7 @@ class DBHelper {
 
   _initDatabase() async {
     return await openDatabase(
-      join(await getDatabasesPath(), 'siagro.db'),
+      join(await getDatabasesPath(), 'lista.db'),
       version: 4,
       onCreate: _onCreate,
     );
@@ -31,14 +26,15 @@ class DBHelper {
     await db.execute(_lista);
   }
 
-  String get _lista=> '''
+  String get _lista => '''
     CREATE TABLE lista  (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titulo TEXT,
       descricao TEXT,
-      foto TEXT, 
-      
-
+      foto BLOB
+    
     );
   ''';
+
+ 
 }

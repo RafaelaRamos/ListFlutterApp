@@ -1,27 +1,74 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:listapp/data/db.dart';
+import 'package:listapp/models/item.dart';
 import 'package:listapp/routes/appRoutes.dart';
+import 'package:sqflite/sqflite.dart';
 
 class Crud extends StatefulWidget {
 
+  const Crud({Key? key}) : super(key: key);
 
   @override
   _CrudState createState() => _CrudState();
 }
 
 class _CrudState extends State<Crud> {
-
+  late Database db;
   final _form = GlobalKey<FormState>();
   final Map<String, String> _formData = {};
-  
+  late Uint8List foto;
+  int id = 0;
+  bool validFoto = false;
+  bool update = false;
+
+  void _loadFormData(Item item) {
+    late String? titulo = item.titulo;
+    late String? descricao = item.descricao;
+      _formData['titulo'] = titulo!;
+      _formData['descricao'] = descricao!;
+   
+  }
+
+
+  @override
+  void didChangeDependencies() {
+    final item = ModalRoute.of(context)?.settings.arguments as Item?;
+    if (item != null) {
+      setState(() {
+        update = true;
+        id = item.id!;
+        validFoto = true;
+        foto = item.foto!;
+      });
+      _loadFormData(item);
+    }
+    super.didChangeDependencies();
+  }
+
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
         appBar: AppBar(
-          title: Text('Cadastro de dados',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ),
+           automaticallyImplyLeading: false,
+            title: Text('Insira os dados',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            actions: <Widget>[
+              Visibility(
+                visible: update,
+                child: IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () {
+                    apagarItem(id);
+                    Navigator.of(context).pushNamed(
+                      Routers.HOME,
+                    );
+                  },
+                ),
+              )
+            ]),
         body: SingleChildScrollView(
           child: Container(
               height: MediaQuery.of(context).size.height,
@@ -31,9 +78,9 @@ class _CrudState extends State<Crud> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                       Color(0XFF1E90FF),
-                       Color(0xFF87CEFA),
-                        Color(0xFFADFF2F),
+                      Color(0XFF1E90FF),
+                      Color(0xFF87CEFA),
+                      Color(0xFFADFF2F),
                     ]),
               ),
               padding:
@@ -50,31 +97,38 @@ class _CrudState extends State<Crud> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                             SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                              width: 250,
-                              child: CircleAvatar( 
-                                radius: 100,
-                                child:Row(
-                                  children: <Widget>[
-                                   Icon(Icons.person),
-                                    SizedBox(
-                              height: 10,
-                            ),
-                               
-                                   
-                                   ]),
-                                
-                                   
-                                 )),
                             SizedBox(
                               height: 10,
                             ),
                             Container(
                               width: 250,
+                              alignment: Alignment.center,
+                              // ignore: prefer_const_constructors
+                              decoration: BoxDecoration(),
+                            ),
+                            RawMaterialButton(
+                              onPressed: () {
+                                this._getImage();
+                              },
+                              elevation: 2.0,
+                              fillColor: Colors.blue,
+                              // ignore: prefer_const_constructors
+                              child: Icon(
+                                Icons.add_a_photo,
+                                size: 20.0,
+                              ),
+                              shape: CircleBorder(),
+                            ),
+                            if (validFoto)
+                              new Container(
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                      image: DecorationImage(
+                                          image: MemoryImage(foto)))),
+                            Container(
+                              width: 250,
                               child: TextFormField(
+                                initialValue: _formData['titulo'],
                                 // autofocus: true,
                                 keyboardType: TextInputType.text,
                                 validator: (value) {
@@ -82,7 +136,8 @@ class _CrudState extends State<Crud> {
                                     return '* Campo obrigatório';
                                   }
                                 },
-                                onSaved: (value) => _formData['nome'] = value!,
+                                onSaved: (value) =>
+                                    _formData['titulo'] = value!,
                                 decoration: InputDecoration(
                                   labelText: "Titulo",
                                   labelStyle: TextStyle(
@@ -102,6 +157,7 @@ class _CrudState extends State<Crud> {
                             Container(
                               width: 250,
                               child: TextFormField(
+                                initialValue: _formData['descricao'],
                                 // autofocus: true,
                                 keyboardType: TextInputType.text,
                                 validator: (value) {
@@ -109,7 +165,8 @@ class _CrudState extends State<Crud> {
                                     return '* Campo obrigatório';
                                   }
                                 },
-                                onSaved: (value) => _formData['nome'] = value!,
+                                onSaved: (value) =>
+                                    _formData['descricao'] = value!,
                                 decoration: InputDecoration(
                                   labelText: "Descrição",
                                   labelStyle: TextStyle(
@@ -119,7 +176,7 @@ class _CrudState extends State<Crud> {
                                   ),
                                 ),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 15,
                                 ),
                               ),
                             ),
@@ -146,32 +203,54 @@ class _CrudState extends State<Crud> {
                               ),
                               child: SizedBox.expand(
                                 child: TextButton(
-                                  child: Text(
-                                    "Cadastrar",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                  child: (update)
+                                      ? Text(
+                                          "Atualizar",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        )
+                                      : Text(
+                                          "Salvar",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
                                   onPressed: () {
-                                   /* final isValid =
-                                        _form.currentState.validate();
+                                    final isValid =
+                                        _form.currentState!.validate();
                                     if (isValid) {
-                                      _form.currentState.save();
-                                      Provider.of<ModuloProvider>(context,
-                                              listen: false)
-                                          .setModulo(
-                                              Modulo(
-                                                  nome: _formData['nome']
-                                                      .toString(),
-                                                  idPropriedade:
-                                                      widget._idPropriedade),
-                                              this.locationList);
+                                      _form.currentState!.save();
+                                      if (update) {
+                                        atualizarItem(
+                                          Item(
+                                              id: id,
+                                              titulo: _formData['titulo']
+                                                  .toString(),
+                                              descricao: _formData['descricao']
+                                                  .toString(),
+                                              foto: foto),
+                                        );
+                                      } else {
+                                        saveItem(Item(
+                                            titulo:
+                                                _formData['titulo'].toString(),
+                                            descricao: _formData['descricao']
+                                                .toString(),
+                                            foto: foto));
+                                      }
 
-                                      Navigator.pop(context);*/
-                                  //  }
+                                      Navigator.of(context).pushNamed(
+                                        Routers.HOME,
+                                      );
+                                      //  }
+                                    }
                                   },
                                 ),
                               ),
@@ -186,8 +265,8 @@ class _CrudState extends State<Crud> {
                                   "Cancelar",
                                   textAlign: TextAlign.center,
                                 ),
-                                onPressed: () => Navigator.pushNamed(
-                                    context, Routers.HOME),
+                                onPressed: () =>
+                                    Navigator.pushNamed(context, Routers.HOME),
                               ),
                             ),
                           ],
@@ -198,5 +277,35 @@ class _CrudState extends State<Crud> {
         ));
   }
 
-  
+  Future _getImage() async {
+
+    var image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxHeight: 576,
+        maxWidth: 720);
+    final file = File(image!.path);
+    final fotoBytes = file.readAsBytesSync();
+   setState(() {
+      foto = fotoBytes;
+      validFoto = true;
+    });
+  }
+
+//Salvar item na lista
+  Future<void> saveItem(Item item) async {
+  db = await DBHelper.instance.database;
+   db.insert("lista", item.toMap());
+  }
+//apagar item na lista
+  Future<void> apagarItem(int id) async {
+    db = await DBHelper.instance.database;
+    db.rawDelete('DELETE FROM lista WHERE id = $id');
+
+  }
+//atualizar item na lista
+  Future<void> atualizarItem(Item item) async {
+  db = await DBHelper.instance.database;
+  await db.update("lista", item.toMap(), where: "id = ?", whereArgs: [item.id]);
+  }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:listapp/routes/appRoutes.dart';
 import 'package:listapp/screens/crud.dart';
-import 'package:listapp/screens/list.dart';
+import 'package:listapp/screens/home.dart';
+
 
 
 void main() {
