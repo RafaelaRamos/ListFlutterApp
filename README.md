@@ -1,2 +1,4 @@
 # ListFlutterApp
-exemplo de aplicação simples em flutter
+exemplo de aplicação  de crud simples utilizando Flutter e sqflite.
+![](exemplo.gif)
+
